@@ -1,0 +1,16 @@
+#include <stdio.h>
+void acceso(unsigned char edad){
+if (edad < 18)
+	printf(No puedes acceder);
+else
+	printf("Bienvenido");
+	return 0;
+}
+
+
+int main(void){
+int x=2 + 4;
+acceso(18);
+acceso(17);
+return(0);
+}
