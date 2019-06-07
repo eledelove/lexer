@@ -63,20 +63,24 @@ struct Lexer
 	DFA dfa_space;
 	DFA dfa_saltol;
 	DFA dfa_tab;
+    DFA dfa_character;
+    
 };
 
 void inicializaLexer(Lexer& lex)
 {
 	//inicializa la tabla de simbolos
-	lex.symbolTable.emplace(make_pair("if",make_pair("IF","")));
-	lex.symbolTable.emplace(make_pair("else",make_pair("ELSE","")));
-	lex.symbolTable.emplace(make_pair("do",make_pair("DO","")));
-	lex.symbolTable.emplace(make_pair("while",make_pair("WHILE","")));
-	lex.symbolTable.emplace(make_pair("break",make_pair("BREAK","")));
-	lex.symbolTable.emplace(make_pair("num",make_pair("NUM","")));
-	lex.symbolTable.emplace(make_pair("bool",make_pair("BOOL","")));
-	lex.symbolTable.emplace(make_pair("false",make_pair("FALSE","")));
-	lex.symbolTable.emplace(make_pair("true",make_pair("TRUE","")));
+	lex.symbolTable.emplace(make_pair("if",make_pair("IF","Reservdada")));
+	lex.symbolTable.emplace(make_pair("else",make_pair("ELSE","Reservdada")));
+	lex.symbolTable.emplace(make_pair("do",make_pair("DO","Reservdada")));
+	lex.symbolTable.emplace(make_pair("while",make_pair("WHILE","Reservdada")));
+	lex.symbolTable.emplace(make_pair("break",make_pair("BREAK","Reservdada")));
+	lex.symbolTable.emplace(make_pair("num",make_pair("NUM","Reservdada")));
+	lex.symbolTable.emplace(make_pair("bool",make_pair("BOOL","Reservdada")));
+	lex.symbolTable.emplace(make_pair("false",make_pair("FALSE","Reservdada")));
+	lex.symbolTable.emplace(make_pair("true",make_pair("TRUE","Reservdada")));
+    lex.symbolTable.emplace(make_pair("include",make_pair("INCLUDE","Reservdada")));
+    lex.symbolTable.emplace(make_pair("stdio",make_pair("STDIO", "Libreria")));
 
 	//automata de identificadores
 	dfaAddTransition(lex.dfa_id,0,'l',1);
@@ -135,10 +139,6 @@ void inicializaLexer(Lexer& lex)
 	dfaAddTransition(lex.dfa_multi,0,'*',1);
 	dfaAddFinalState(lex.dfa_multi,1);
 
-	//automata de /
-	dfaAddTransition(lex.dfa_div,0,'/',1);
-	dfaAddFinalState(lex.dfa_div,1);
-
 	//automata de %
 	dfaAddTransition(lex.dfa_mod,0,'%',1);
 	dfaAddFinalState(lex.dfa_mod,1);
@@ -196,6 +196,18 @@ void inicializaLexer(Lexer& lex)
 	//automata de tabulador
 	dfaAddTransition(lex.dfa_tab,0,'\t',1);
 	dfaAddFinalState(lex.dfa_tab,1);
+    
+    //automata de /
+    dfaAddTransition(lex.dfa_div,0,'/',1);
+    dfaAddFinalState(lex.dfa_div,1);
+    
+    //automata de caracteres
+    dfaAddTransition(lex.dfa_character,0,'#',1);
+    dfaAddTransition(lex.dfa_character,0,'.',1);
+    dfaAddTransition(lex.dfa_character,0,'"',1);
+    dfaAddFinalState(lex.dfa_character,1);
+    
+    
 }
 
 struct Token
@@ -213,7 +225,7 @@ string dfaStart(DFA& dfa, std::ifstream& inputStream)
     while(inputStream.good())
     {
         char symbol = inputStream.get();
-	char symbolAux=symbol;
+        char symbolAux=symbol;
 
 	if(isalpha(symbol)|| symbol=='_')
 	{
@@ -259,7 +271,7 @@ void addSymbolTable(Lexer& lexer,Token token)
 {
 	if(lexer.symbolTable.count(token.nombre)==0)
 	{
-		lexer.symbolTable.emplace(make_pair(token.nombre,make_pair(token.nombre,token.atributo)));
+		lexer.symbolTable.emplace(make_pair(("ID"+token.nombre),make_pair(token.nombre,token.atributo)));
 	}
 }
 
@@ -274,7 +286,7 @@ Token getNextToken(Lexer& lexer,std::ifstream& inputStream,int cont_sl)
 		cad=dfaStart(lexer.dfa_id,inputStream);
 		if(cad!="No aceptado")
 		{
-			token.nombre="ID"+cad;
+			token.nombre=cad;
 			token.atributo=cad;
 			addSymbolTable(lexer,token);
 			return token;
@@ -304,6 +316,7 @@ Token getNextToken(Lexer& lexer,std::ifstream& inputStream,int cont_sl)
 			token.atributo=cad;
 			return token;
 		}
+        
 		//ejecuta el DFA de ==
 		cad=dfaStart(lexer.dfa_iguali,inputStream);
 		if(cad!="No aceptado")
@@ -336,14 +349,7 @@ Token getNextToken(Lexer& lexer,std::ifstream& inputStream,int cont_sl)
 			token.atributo=cad;
 			return token;
 		}
-		//ejecuta el DFA de /
-		cad=dfaStart(lexer.dfa_div,inputStream);
-		if(cad!="No aceptado")
-		{
-			token.nombre="OpeAri";
-			token.atributo=cad;
-			return token;
-		}
+		
 		//ejecuta el DFA de %
 		cad=dfaStart(lexer.dfa_mod,inputStream);
 		if(cad!="No aceptado")
@@ -456,6 +462,25 @@ Token getNextToken(Lexer& lexer,std::ifstream& inputStream,int cont_sl)
 			token.atributo=cad;
 			return token;
 		}
+        
+        //ejecuta el DFA de /
+        cad=dfaStart(lexer.dfa_div,inputStream);
+        if(cad!="No aceptado")
+        {
+            token.nombre="OpeAri";
+            token.atributo=cad;
+            return token;
+        }
+        
+        //ejecuta DFA characteres
+        cad=dfaStart(lexer.dfa_character,inputStream);
+        if(cad!="No aceptado")
+        {
+            token.nombre="Character";
+            token.atributo=cad;
+            return token;
+        }
+        
 		//Verifica si hubo un error
 		if(cad=="No aceptado")
 		{
@@ -481,15 +506,17 @@ int main()
 	inicializaLexer(lexer);
 	ifstream inputStream("source.txt");
 	//tok=getNextToken(lexer,inputStream,cont_sl);
-	//cout<< tok.nombre << " " << tok.atributo <<endl;
+	//cout<< tok.nombre << " hola" << tok.atributo <<endl;
 	while(inputStream.good() && tok.nombre!="EOF")
 	{
 		tok=getNextToken(lexer,inputStream,cont_sl);
 		if(tok.nombre=="SalLin")
 		{
 			cont_sl++;
+            cout <<tok.nombre<<endl;
 		}
-		cout<< tok.nombre << " " << tok.atributo <<endl;
+        else cout<< tok.nombre << " " << tok.atributo <<endl;
+		
 	}
 	cout<<"****************Tabla de Simbolos***********************************" <<endl;
 	for(auto& i:lexer.symbolTable)
